@@ -5,7 +5,7 @@ on:
     branches:
       - master
     tags:
-      - v1.1
+      - v0.0.1
 
 jobs:
 
@@ -31,9 +31,6 @@ jobs:
             dep ensure
         fi
 
-    - name: Test
-      run: make test
-
     - name: Build
       run: make build
 
@@ -42,8 +39,8 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       with:
         files: |
-          darwin-amd64-yamllint.zip
-          linux-amd64-yamllint.zip
-          windows-amd64-yamllint.zip
+          darwin-amd64-repol.zip
+          linux-amd64-repol.zip
+          windows-amd64-repol.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GHUB_TOKEN }}
