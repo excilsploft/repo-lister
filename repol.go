@@ -11,10 +11,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Struct to hold a top level list of repos
 type Repos struct {
 	Repos []Repo `yaml:"repos"`
 }
 
+// Struct to hold the fields we care about in a repo
 type Repo struct {
 	Name     string   `yaml:"name"`
 	GitURL   string   `yaml:"giturl"`
