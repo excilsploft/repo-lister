@@ -17,6 +17,8 @@ type Repos struct {
 
 type Repo struct {
 	Name     string   `yaml:"name"`
+	GitURL   string   `yaml:"giturl"`
+	CloneURL string   `yaml:"cloneurl"`
 	Branches []string `yaml:"branches"`
 }
 
@@ -65,7 +67,7 @@ func main() {
 
 	for _, v := range repos {
 
-		repo := Repo{Name: *v.Name}
+		repo := Repo{Name: *v.Name, CloneURL: *v.CloneURL, GitURL: *v.GitURL}
 		branches, resp, err := client.Repositories.ListBranches(ctx, org, *v.Name, &blOptions)
 		if err != nil {
 			fmt.Fprint(os.Stderr, "An Error Occurred: %s\n", err)
