@@ -54,7 +54,7 @@ func main() {
 
 	// set our repo and branch list options
 	options := github.RepositoryListByOrgOptions{Type: "all", Sort: "full_name"}
-	blOptions := github.BranchListOptions{}
+	blOptions := github.BranchListOptions{ListOptions: github.ListOptions{PerPage: 200}}
 
 	// get the repository list for our org
 	repos, resp, err := client.Repositories.ListByOrg(ctx, org, &options)
