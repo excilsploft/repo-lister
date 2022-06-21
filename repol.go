@@ -67,24 +67,26 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Repository List Response: %s\n", resp)
 	}
 
-	for _, v := range repos {
+    go func() {
+        for _, v := range repos {
 
-		repo := Repo{Name: *v.Name, CloneURL: *v.CloneURL, GitURL: *v.GitURL}
-		branches, resp, err := client.Repositories.ListBranches(ctx, org, *v.Name, &blOptions)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "An Error Occurred: %s\n", err)
-			if debug {
-				fmt.Fprintf(os.Stderr, "Branch List Response: %s\n", resp)
-			}
-			continue
-		}
+            repo := Repo{Name: *v.Name, CloneURL: *v.CloneURL, GitURL: *v.GitURL}
+            branches, resp, err := client.Repositories.ListBranches(ctx, org, *v.Name, &blOptions)
+            if err != nil {
+                fmt.Fprint(os.Stderr, "An Error Occurred: %s\n", err)
+                if debug {
+                    fmt.Fprintf(os.Stderr, "Branch List Response: %s\n", resp)
+                }
+                continue
+            }
 
-		for _, b := range branches {
-			repo.Branches = append(repo.Branches, *b.Name)
-		}
+            for _, b := range branches {
+                repo.Branches = append(repo.Branches, *b.Name)
+            }
 
-		orgRepos.Repos = append(orgRepos.Repos, repo)
-	}
+            orgRepos.Repos = append(orgRepos.Repos, repo)
+        }
+    }()
 
 	// get a yaml encoder
 	yEncoder := yaml.NewEncoder(os.Stdout)
