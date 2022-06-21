@@ -53,7 +53,7 @@ func main() {
 	client := getOauthClient(ctx, token)
 
 	// set our repo and branch list options
-	options := github.RepositoryListByOrgOptions{Type: "all", Sort: "full_name"}
+    options := github.RepositoryListByOrgOptions{Type: "all", Sort: "full_name", ListOptions: github.ListOptions{PerPage: 100}}
 	blOptions := github.BranchListOptions{ListOptions: github.ListOptions{PerPage: 200}}
 
 	// get the repository list for our org

@@ -4,3 +4,4 @@
 !Jenkinsfile
 !Dockerfile
 !Makefile
+*.zip
