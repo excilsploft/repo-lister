@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+    "sync"
 
 	"github.com/google/go-github/v32/github"
 	"golang.org/x/oauth2"
@@ -45,7 +46,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	orgRepos := Repos{}
 
 	// set the context to a background context: https://golang.org/pkg/context/#Background
 	ctx := context.Background()
@@ -54,7 +54,6 @@ func main() {
 
 	// set our repo and branch list options
     options := github.RepositoryListByOrgOptions{Type: "all", Sort: "full_name", ListOptions: github.ListOptions{PerPage: 100}}
-	blOptions := github.BranchListOptions{ListOptions: github.ListOptions{PerPage: 200}}
 
 	// get the repository list for our org
 	repos, resp, err := client.Repositories.ListByOrg(ctx, org, &options)
@@ -67,24 +66,43 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Repository List Response: %s\n", resp)
 	}
 
-	for _, v := range repos {
+    blOptions := github.BranchListOptions{ListOptions: github.ListOptions{PerPage: 200}}
+    orgRepos := Repos{}
+    ch  := make(chan Repo)
+    var wg sync.WaitGroup
 
-		repo := Repo{Name: *v.Name, CloneURL: *v.CloneURL, GitURL: *v.GitURL}
-		branches, resp, err := client.Repositories.ListBranches(ctx, org, *v.Name, &blOptions)
-		if err != nil {
-			fmt.Fprint(os.Stderr, "An Error Occurred: %s\n", err)
-			if debug {
-				fmt.Fprintf(os.Stderr, "Branch List Response: %s\n", resp)
-			}
-			continue
-		}
+    for _, v := range repos {
+        go func(v *github.Repository) {
+            wg.Add(1)
+            defer wg.Done()
+            repo := Repo{Name: *v.Name, CloneURL: *v.CloneURL, GitURL: *v.GitURL}
+            branches, resp, err := client.Repositories.ListBranches(ctx, org, *v.Name, &blOptions)
+            if err != nil {
+                fmt.Fprint(os.Stderr, "An Error Occurred: %s\n", err)
+                if debug {
+                    fmt.Fprintf(os.Stderr, "Branch List Response: %s\n", resp)
+                }
+            }
 
-		for _, b := range branches {
-			repo.Branches = append(repo.Branches, *b.Name)
-		}
+            for _, b := range branches {
+                repo.Branches = append(repo.Branches, *b.Name)
+            }
 
-		orgRepos.Repos = append(orgRepos.Repos, repo)
-	}
+            // orgRepos.Repos = append(orgRepos.Repos, repo)
+            ch <- repo
+        }(v)
+    }
+
+    go func() {
+        wg.Wait()
+        close(ch)
+    }()
+
+    for r := range ch {
+
+        orgRepos.Repos = append(orgRepos.Repos, r)
+
+    }
 
 	// get a yaml encoder
 	yEncoder := yaml.NewEncoder(os.Stdout)
