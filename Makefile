@@ -8,7 +8,13 @@ zipfiles := $(wildcard *.zip)
 default: build
 
 .PHONY: build
-build: $(platforms) $(source)
+build: $(app)
+
+$(app):
+	GOOARCH=amd64 go build -o $(app) $(source)
+
+.PHONY: build_zip
+build_zip: $(platforms) $(source)
 
 $(platforms):
 	GOOS=$@ GOOARCH=amd64 go build -o $(app) $(source)
@@ -21,5 +27,5 @@ install: $(source)
 
 
 .PHONY: clean
-clean: $(zipfiles)
-	rm $(zipfiles)
+clean: $(zipfiles) $(app)
+	rm $(zipfiles) $(app)

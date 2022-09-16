@@ -27,10 +27,12 @@ type Repo struct {
 
 func main() {
 
+    var enterpriseUrl string
 	var token string
 	var org string
 	var debug bool
 
+	flag.StringVar(&enterpriseUrl, "e", "", "Github Enterprise Url")
 	flag.StringVar(&token, "t", lookupStringVar("GITHUB_AUTH_TOKEN", ""), "github token")
 	flag.StringVar(&org, "o", lookupStringVar("GITHUB_ORG", ""), "github organization")
 	flag.BoolVar(&debug, "d", false, "debug mode")
@@ -49,8 +51,19 @@ func main() {
 
 	// set the context to a background context: https://golang.org/pkg/context/#Background
 	ctx := context.Background()
-	// get the oauth client witht the ghub token and context
-	client := getOauthClient(ctx, token)
+
+    var client *github.Client
+    var clientErr error
+	// if enterprise get enterprise client else get the oauth client with the ghub token and context
+    if len(enterpriseUrl) > 0 {
+        client, clientErr = getEnterpriseClient(ctx, enterpriseUrl, token)
+        if clientErr != nil {
+            fmt.Fprintf(os.Stderr, "Error Getting Enterprise Client: %s\n", clientErr)
+            os.Exit(1)
+        }
+    } else {
+	    client = getOauthClient(ctx, token)
+    }
 
 	// set our repo and branch list options
     options := github.RepositoryListByOrgOptions{Type: "all", Sort: "full_name", ListOptions: github.ListOptions{PerPage: 100}}
@@ -72,8 +85,8 @@ func main() {
     var wg sync.WaitGroup
 
     for _, v := range repos {
-        go func(v *github.Repository) {
-            wg.Add(1)
+        wg.Add(1)
+        go func(v *github.Repository, ch chan <- Repo, wg *sync.WaitGroup) {
             defer wg.Done()
             repo := Repo{Name: *v.Name, CloneURL: *v.CloneURL, GitURL: *v.GitURL}
             branches, resp, err := client.Repositories.ListBranches(ctx, org, *v.Name, &blOptions)
@@ -90,7 +103,7 @@ func main() {
 
             // orgRepos.Repos = append(orgRepos.Repos, repo)
             ch <- repo
-        }(v)
+        }(v, ch, &wg)
     }
 
     go func() {
@@ -99,14 +112,15 @@ func main() {
     }()
 
     for r := range ch {
-
         orgRepos.Repos = append(orgRepos.Repos, r)
-
     }
 
+    if debug {
+        fmt.Fprintf(os.Stderr, "%+v\n", orgRepos.Repos)
+    }
 	// get a yaml encoder
 	yEncoder := yaml.NewEncoder(os.Stdout)
-	err = yEncoder.Encode(&orgRepos)
+	err = yEncoder.Encode(&orgRepos.Repos)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "An Error Occurred in Encoding: %s\n", err)
 	}
@@ -133,4 +147,16 @@ func getOauthClient(ctx context.Context, token string) *github.Client {
 
 	client := github.NewClient(tokenClient)
 	return client
+}
+
+// private function to wrap getting an enterprise client
+func getEnterpriseClient(ctx context.Context, enterpriseUrl string, token string) (*github.Client, error) {
+
+	st := oauth2.StaticTokenSource(&oauth2.Token{AccessToken: token})
+	tokenClient := oauth2.NewClient(ctx, st)
+
+	client, err := github.NewEnterpriseClient(enterpriseUrl, enterpriseUrl, tokenClient)
+
+	return client, err
+
 }
